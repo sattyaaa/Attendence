@@ -3,7 +3,7 @@ from tkinter import simpledialog, messagebox
 import cv2
 import os
 import face_recognition
-import pandas as pd
+import csv
 from datetime import datetime
 
 # Paths
@@ -12,8 +12,10 @@ ATTENDANCE_FILE = "attendance.csv"
 
 # Ensure directories and files exist
 os.makedirs(PHOTO_FOLDER, exist_ok=True)
-if not os.path.exists(ATTENDANCE_FILE):
-    pd.DataFrame(columns=["Roll No", "Name", "Date", "Time"]).to_csv(ATTENDANCE_FILE, index=False)
+if not os.path.exists(ATTENDANCE_FILE) or os.stat(ATTENDANCE_FILE).st_size == 0:
+    with open(ATTENDANCE_FILE, "w", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow(["Roll No", "Name", "Date", "Time"])
 
 # Functions
 def capture_photo(filename):
@@ -90,20 +92,18 @@ def log_attendance(roll_no, name):
     date = now.strftime("%Y-%m-%d")
     time = now.strftime("%H:%M:%S")
 
-    # Read the existing CSV file
-    df = pd.read_csv(ATTENDANCE_FILE)
-    
-    # Check for duplicate entries
-    if not ((df["Roll No"] == roll_no) & (df["Date"] == date)).any():
-        # Create a new row as a dictionary
-        new_entry = {"Roll No": roll_no, "Name": name, "Date": date, "Time": time}
+    # Check if the attendance already exists
+    with open(ATTENDANCE_FILE, "r") as file:
+        reader = csv.reader(file)
+        next(reader)  # Skip header row
+        for row in reader:
+            if row[0] == roll_no and row[2] == date:
+                return  # Entry already exists
 
-        # Add the new row to the DataFrame
-        df = pd.concat([df, pd.DataFrame([new_entry])], ignore_index=True)
-
-        # Save the updated DataFrame to the CSV file
-        df.to_csv(ATTENDANCE_FILE, index=False)
-
+    # Add new attendance entry
+    with open(ATTENDANCE_FILE, "a", newline="") as file:
+        writer = csv.writer(file)
+        writer.writerow([roll_no, name, date, time])
 
 # GUI Setup
 root = tk.Tk()
